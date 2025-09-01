@@ -6,6 +6,29 @@ public enum ENodeType
     Leaf
 }
 
+public static class ArrayExtensions
+{
+    public static void ShiftArrayRight<T>(this T[] array, int startIndex, int count)
+    {
+        int elementsToShift = count - startIndex;
+
+        if (elementsToShift > 0)
+        {
+            Array.Copy(array, startIndex, array, startIndex + 1, elementsToShift);
+        }
+    }
+    
+    public static void ShiftArrayLeft<T>(this T[] array, int startIndex, int count)
+    {
+        int elementsToShift = count - 1 - startIndex;
+
+        if (elementsToShift > 0)
+        {
+            Array.Copy(array, startIndex + 1, array, startIndex, elementsToShift);
+        }
+    }
+}
+
 public abstract class Node<TKey>(int order, ENodeType nodeType)
 {
     protected readonly TKey[] _keys = new TKey[order - 1];
@@ -80,11 +103,11 @@ public class InternalNode<TKey>(int order) : Node<TKey>(order, ENodeType.Interna
             throw new InvalidOperationException("Node is full");
 
         // Shift keys to the right to make space for the new key.
-        Array.Copy(_keys, keyIndex, _keys, keyIndex + 1, KeyCount - keyIndex);
+        _keys.ShiftArrayRight(keyIndex, KeyCount);
 
         // Shift children to the right to make space for the new child
         int childIndex = keyIndex + 1;
-        Array.Copy(_children, childIndex, _children, childIndex + 1, (KeyCount + 1) - childIndex);
+        _children.ShiftArrayRight(childIndex, KeyCount + 1);
 
         _keys[keyIndex] = key;
         _children[childIndex] = rightChild;
@@ -96,13 +119,9 @@ public class InternalNode<TKey>(int order) : Node<TKey>(order, ENodeType.Interna
 
     public void RemoveAt(int index)
     {
-        // Number of elements to shift to the left
-        int elementsToShift = KeyCount - 1 - index;
-        if (elementsToShift > 0)
-        {
-            Array.Copy(_keys, index + 1, _keys, index, elementsToShift);
-            Array.Copy(_children, index + 1, _children, index, elementsToShift + 1);
-        }
+        _keys.ShiftArrayLeft(index, KeyCount);
+        _children.ShiftArrayLeft(index + 1, KeyCount + 1);
+
         KeyCount--;
 
         // Clear the last (now unused) element
@@ -150,15 +169,9 @@ public class LeafNode<TKey, TValue>(int order) : Node<TKey>(order, ENodeType.Lea
         if (IsFull)
             throw new InvalidOperationException("Node is full");
 
-        // Number of elements to shift
-        int elementsToShift = KeyCount - index;
-
-        // Shift keys to the right using Array.Copy
-        if (elementsToShift > 0)
-        {
-            Array.Copy(_keys, index, _keys, index + 1, elementsToShift);
-            Array.Copy(_values, index, _values, index + 1, elementsToShift);
-        }
+        // Shift keys and values to the right to make space
+        _keys.ShiftArrayRight(index, KeyCount);
+        _values.ShiftArrayRight(index, KeyCount);
 
         _keys[index] = key;
         _values[index] = value;
@@ -168,14 +181,8 @@ public class LeafNode<TKey, TValue>(int order) : Node<TKey>(order, ENodeType.Lea
 
     public void RemoveAt(int index)
     {
-        // Number of elements to shift to the left
-        int elementsToShift = KeyCount - 1 - index;
-
-        if (elementsToShift > 0)
-        {
-            Array.Copy(_keys, index + 1, _keys, index, elementsToShift);
-            Array.Copy(_values, index + 1, _values, index, elementsToShift);
-        }
+        _keys.ShiftArrayLeft(index, KeyCount);
+        _values.ShiftArrayLeft(index, KeyCount);
 
         KeyCount--;
 
